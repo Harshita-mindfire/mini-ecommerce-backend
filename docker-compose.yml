@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres
+    hostname: postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: User
+    restart: unless-stopped
+    volumes:
+      - data:/var/lib/postgres/data
+
+  rabbitmq:
+    image: rabbitmq:3.10-rc-management-alpine
+    ports:
+      # AMQP protocol port
+      - "5672:5672"
+      # HTTP management UI
+      - "15672:15672"
+
+  prisma-postgres-api:
+    stdin_open: true
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: prisma-postgres-api
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    depends_on:
+      - postgres
+    ports:
+      - "5555:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin4@pgadmin.org
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    restart: unless-stopped
+
+  products:
+    build:
+      context: ./products
+    environment:
+      PORT: "3002"
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - "3002:3002"
+
+  orders:
+    build:
+      context: ./orders
+    environment:
+      PORT: "3001"
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - "3001:3001"
+
+volumes:
+  data:
+  pgadmin-data:
