@@ -1,5 +1,8 @@
 version: "3.8"
 
+networks:
+  my_network:
+
 services:
   postgres:
     image: postgres:14-alpine
@@ -11,19 +14,23 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: User
-    restart: unless-stopped
     volumes:
       - data:/var/lib/postgres/data
+    networks:
+      - my_network
 
   rabbitmq:
-    image: rabbitmq:3.10-rc-management-alpine
+    image: rabbitmq:latest
+    container_name: rabbitmq
     ports:
       # AMQP protocol port
       - "5672:5672"
       # HTTP management UI
       - "15672:15672"
+    networks:
+      - my_network
 
-  prisma-postgres-api:
+  auth:
     stdin_open: true
     build:
       context: ./auth
@@ -32,8 +39,9 @@ services:
     depends_on:
       - postgres
     ports:
-      - "3000:3000"
-    restart: always
+      - 3000:3000
+    networks:
+      - my_network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -47,7 +55,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     volumes:
       - pgadmin-data:/var/lib/pgadmin
-    restart: unless-stopped
+    networks:
+      - my_network
 
   products:
     build:
@@ -58,18 +67,9 @@ services:
       - postgres
       - rabbitmq
     ports:
-      - "3002:3002"
-
-  orders:
-    build:
-      context: ./orders
-    environment:
-      PORT: "3001"
-    depends_on:
-      - postgres
-      - rabbitmq
-    ports:
-      - "3001:3001"
+      - 3002:3002
+    networks:
+      - my_network
 
 volumes:
   data:
